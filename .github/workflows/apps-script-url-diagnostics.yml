@@ -1,0 +1,46 @@
+name: Apps Script URL diagnostics
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/apps-script-url-diagnostics.yml'
+  workflow_dispatch:
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Test Banyoles URL variants
+        shell: bash
+        run: |
+          set -u
+          ID='AKfycbybD0HQPzBN05pFbGW6v0s8sxc2utBJEYwuw9FAL5IaQkK0raX0a_owK9W8A5UioyuH'
+          test_url(){
+            name="$1"; url="$2"
+            echo "===== $name ====="
+            echo "$url"
+            curl -sS -L --max-time 30 -D "/tmp/${name}.headers" -o "/tmp/${name}.body" -w 'HTTP=%{http_code}\nFINAL=%{url_effective}\n' "$url" || true
+            echo '--- title / markers ---'
+            grep -Eio '<title>[^<]*|NEXUS Maintenance|Google Drive|No se puede abrir|unable to open' "/tmp/${name}.body" | head -10 || true
+            echo
+          }
+          test_url canonical "https://script.google.com/macros/s/${ID}/exec?rol=operari&nom=Operari"
+          test_url wildcard "https://script.google.com/a/*/macros/s/${ID}/exec?rol=operari&nom=Operari"
+          test_url gmail "https://script.google.com/a/gmail.com/macros/s/${ID}/exec?rol=operari&nom=Operari"
+      - name: Test Lloret URL variants
+        shell: bash
+        run: |
+          set -u
+          ID='AKfycbxFCsuk8fLX8d2Ko2oXzatH2tC4G1CD3PEaTJA2y6s6XyPblFeoOui_7rv-OTqfj3EVxQ'
+          for variant in canonical wildcard gmail; do
+            case "$variant" in
+              canonical) url="https://script.google.com/macros/s/${ID}/exec?rol=operari&nom=Operari" ;;
+              wildcard) url="https://script.google.com/a/*/macros/s/${ID}/exec?rol=operari&nom=Operari" ;;
+              gmail) url="https://script.google.com/a/gmail.com/macros/s/${ID}/exec?rol=operari&nom=Operari" ;;
+            esac
+            echo "===== $variant ====="
+            curl -sS -L --max-time 30 -o "/tmp/lloret-${variant}.body" -w 'HTTP=%{http_code}\nFINAL=%{url_effective}\n' "$url" || true
+            grep -Eio '<title>[^<]*|NEXUS Maintenance|Google Drive|No se puede abrir|unable to open' "/tmp/lloret-${variant}.body" | head -10 || true
+            echo
+          done
