@@ -18,25 +18,20 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Build valid PWA icons
+      - name: Verify PWA package
         run: |
-          curl -fsSL 'https://raw.githubusercontent.com/Tgrimaldi/darts-sublimation-studio/main/public-assets/sece/nexus-manteniment-icon-180.png' -o icon-source.png
-          python -m pip install --disable-pip-version-check pillow
-          python - <<'PY'
-          from PIL import Image
-          im=Image.open('icon-source.png').convert('RGBA')
-          im.resize((180,180),Image.Resampling.LANCZOS).save('icon-180.png',optimize=True)
-          im.resize((192,192),Image.Resampling.LANCZOS).save('icon-192.png',optimize=True)
-          im.resize((512,512),Image.Resampling.LANCZOS).save('icon-512.png',optimize=True)
-          im.resize((512,512),Image.Resampling.LANCZOS).save('icon-maskable-512.png',optimize=True)
-          PY
-          python - <<'PY'
-          from PIL import Image
-          for f,s in [('icon-180.png',(180,180)),('icon-192.png',(192,192)),('icon-512.png',(512,512)),('icon-maskable-512.png',(512,512))]:
-              im=Image.open(f); assert im.size==s, (f,im.size,s)
-          print('PWA icons OK')
-          PY
+          test -f index.html
+          test -f icon-180.png
+          test -f icon-192.png
+          test -f icon-512.png
+          test -f icon-maskable-512.png
+          test -f banyoles-operari/manifest.webmanifest
+          test -f banyoles-toni/manifest.webmanifest
+          test -f lloret-operari/manifest.webmanifest
+          test -f lloret-jaume/manifest.webmanifest
       - uses: actions/configure-pages@v5
+        with:
+          enablement: true
       - uses: actions/upload-pages-artifact@v3
         with:
           path: .
