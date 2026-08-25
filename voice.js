@@ -89,7 +89,8 @@
     if(!transcript||!target)return;
     const u=new URL(target);
     u.searchParams.set('voice','1');
-    u.searchParams.set('voiceText',transcript);
+    // NEXUS VOICE HASH BRIDGE V2: keep the spoken sentence out of Apps Script doGet.
+    u.hash='voiceText='+encodeURIComponent(transcript);
     setStatus('Obrint NEXUS per revisar la incidència…','ok');
     location.assign(u.toString());
   });
