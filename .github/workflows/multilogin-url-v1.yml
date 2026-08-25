@@ -1,0 +1,81 @@
+name: NEXUS Multi-login URL V1
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/multilogin-url-v1.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: nexus-multilogin-url-v1
+  cancel-in-progress: false
+
+jobs:
+  patch-test-commit:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+      - name: Apply multi-login-safe URLs
+        run: |
+          python -m py_compile scripts/apply-multilogin-url-v1.py
+          python scripts/apply-multilogin-url-v1.py
+      - name: Validate launcher JavaScript
+        run: |
+          node --check install.js
+          node --check voice.js
+          node --check voice-hash-v2.js
+      - name: Static audit
+        shell: bash
+        run: |
+          ! grep -R -n --include='*.html' 'https://script.google.com/macros/s/' .
+          test "$(grep -R -l --include='*.html' 'https://script.google.com/a/\*/macros/s/' . | wc -l)" -ge 7
+          grep -q "nexus-sece-launcher-v7" sw.js
+          grep -q "NEXUS MULTILOGIN URL GUARD V1" .github/workflows/pages.yml
+      - name: Smoke test Apps Script wildcard URLs
+        shell: bash
+        run: |
+          B='AKfycbybD0HQPzBN05pFbGW6v0s8sxc2utBJEYwuw9FAL5IaQkK0raX0a_owK9W8A5UioyuH'
+          L='AKfycbxFCsuk8fLX8d2Ko2oXzatH2tC4G1CD3PEaTJA2y6s6XyPblFeoOui_7rv-OTqfj3EVxQ'
+          for spec in "Banyoles:$B" "Lloret:$L"; do
+            zone="${spec%%:*}"; id="${spec#*:}"
+            url="https://script.google.com/a/*/macros/s/${id}/exec?rol=operari&nom=Operari"
+            code="$(curl -sS -L --max-time 30 -o /tmp/nexus.html -w '%{http_code}' "$url")"
+            test "$code" = "200" || (echo "$zone HTTP $code" && exit 1)
+            grep -q 'NEXUS Maintenance' /tmp/nexus.html || (echo "$zone NEXUS marker missing" && exit 1)
+            echo "$zone wildcard URL OK"
+          done
+      - name: Safety diff gate
+        shell: bash
+        run: |
+          git config core.quotePath false
+          git diff --name-only | sort
+          python - <<'PY'
+          import subprocess
+          allowed={
+            'banyoles-operari/index.html','banyoles-toni/index.html','banyoles-veu-beta/index.html','banyoles-veu-beta-v2/index.html',
+            'lloret-operari/index.html','lloret-jaume/index.html','lloret-veu-beta/index.html','sw.js','.github/workflows/pages.yml'
+          }
+          changed=set(filter(None,subprocess.check_output(['git','diff','--name-only'],text=True).splitlines()))
+          extra=changed-allowed
+          missing={'banyoles-operari/index.html','banyoles-toni/index.html','banyoles-veu-beta/index.html','lloret-operari/index.html','lloret-jaume/index.html','lloret-veu-beta/index.html','sw.js','.github/workflows/pages.yml'}-changed
+          if extra: raise SystemExit('Unexpected files: '+', '.join(sorted(extra)))
+          if missing: raise SystemExit('Expected files not changed: '+', '.join(sorted(missing)))
+          print('Safety diff OK')
+          PY
+      - name: Commit launcher fix
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add banyoles-operari/index.html banyoles-toni/index.html banyoles-veu-beta/index.html banyoles-veu-beta-v2/index.html lloret-operari/index.html lloret-jaume/index.html lloret-veu-beta/index.html sw.js .github/workflows/pages.yml
+          git commit -m "fix: use multi-login-safe Apps Script URLs"
+          git fetch origin main
+          git rebase origin/main
+          git push origin HEAD:main
