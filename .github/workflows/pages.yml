@@ -43,6 +43,13 @@ jobs:
           test -f banyoles-toni/manifest.webmanifest
           test -f lloret-operari/manifest.webmanifest
           test -f lloret-jaume/manifest.webmanifest
+          # NEXUS MULTILOGIN URL GUARD V1: never publish the Apps Script URL form
+          # that Chrome can rewrite to /macros/u/1/s/... with multiple accounts.
+          ! grep -R -n --include='*.html' 'https://script.google.com/macros/s/' .
+          test "$(grep -R -l --include='*.html' 'https://script.google.com/a/\*/macros/s/' . | wc -l)" -ge 7
+          grep -q "u.hash='voiceText='" voice.js
+          grep -q "u.hash='voiceText='" voice-hash-v2.js
+          ! grep -q "searchParams.set('voiceText'" voice.js voice-hash-v2.js
       - uses: actions/configure-pages@v5
         with:
           enablement: true
