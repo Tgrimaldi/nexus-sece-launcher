@@ -18,6 +18,14 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Build NEXUS Veu icons
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends librsvg2-bin
+          rsvg-convert -w 180 -h 180 voice-icon.svg -o voice-icon-180.png
+          rsvg-convert -w 192 -h 192 voice-icon.svg -o voice-icon-192.png
+          rsvg-convert -w 512 -h 512 voice-icon.svg -o voice-icon-512.png
+          cp voice-icon-512.png voice-icon-maskable-512.png
       - name: Verify PWA package
         run: |
           test -f index.html
@@ -25,6 +33,12 @@ jobs:
           test -f icon-192.png
           test -f icon-512.png
           test -f icon-maskable-512.png
+          test -f voice-icon-180.png
+          test -f voice-icon-192.png
+          test -f voice-icon-512.png
+          test -f voice-icon-maskable-512.png
+          test -f banyoles-veu-beta/manifest.webmanifest
+          test -f lloret-veu-beta/manifest.webmanifest
           test -f banyoles-operari/manifest.webmanifest
           test -f banyoles-toni/manifest.webmanifest
           test -f lloret-operari/manifest.webmanifest
